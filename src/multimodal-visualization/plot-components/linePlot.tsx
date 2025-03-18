@@ -34,6 +34,9 @@ export default function LinePlot({
     const [height, setHeight] = useState(0);
     const containerRef = useRef<HTMLDivElement>(null);
     const margin = { top: height * 0.15, bottom: marginBottom, left: marginLeft, right: 0 };
+    const dataCopy = data.filter(
+        (d) => features.every((feat) => d[feat] !== null)
+    )
 
     // Update the dimensions of the plot when the window is resized
     const updateDimensions = () => {
@@ -81,7 +84,7 @@ export default function LinePlot({
             <svg width="100%" height="100%">
                 <g className="plot-area">
                     {lines.map((line, index) => {
-                        return <path d={line(data) as string} fill="none" stroke={colors[index]} strokeWidth="2" />
+                        return <path d={line(dataCopy) as string} fill="none" stroke={colors[index]} strokeWidth="2" />
                     })}
                 </g>
                 { yAxis ? <Axis
