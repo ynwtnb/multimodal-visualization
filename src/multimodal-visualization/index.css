@@ -9,6 +9,7 @@
     background-color: #F2F2F2;
     height: 100vh;
     width: 100vw;
+    overflow: auto;
 }
 
 .full-dash {
@@ -16,6 +17,18 @@
     height: 15vh;
     margin-top: 1vh;
     background-color: #FFFFFF;
+}
+
+.full-dash-axis {
+    width: 85vw;
+    height: 20vh;
+    margin-top: 1vh;
+    background-color: #FFFFFF;
+}
+
+.dash-title {
+    background-color: #515151;
+    color: #FFFFFF;
 }
 
 .legend-box {
@@ -32,5 +45,9 @@
 }
 
 .seg-slider-container {
-    margin-right: 15vw;
+    padding-right: 8vw;
+}
+
+.category-rect {
+    fill-opacity: 50%;
 }

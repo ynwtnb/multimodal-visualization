@@ -50,7 +50,7 @@ export default function Axis(
                 )  
             })}
             {label ? 
-                <text text-anchor="start" dominant-baseline="hanging" fill="black" x={-marginLeft} y={0}>
+                <text text-anchor="middle" dominant-baseline="middle" fill="black" x={-height/2} y={-45} transform="rotate(-90)">
                     {label}
                 </text>
             : null}

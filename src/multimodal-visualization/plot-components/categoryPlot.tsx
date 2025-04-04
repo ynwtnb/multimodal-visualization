@@ -6,23 +6,18 @@ import LegendBox from "./legendBox";
 import Axis from "./axis";
 import OnMouseMove from "./onMouseMove";
 
-export default function LinePlot({
+export default function CategoryPlot({
     data,
     timestampCol,
     features,
     marginLeft,
     marginBottom,
-    ylabel,
     legends,
     colors,
     xAxis,
-    yAxis,
     cursorX,
     setCursorX,
-    synchronyWindowSize = 0,
-    yMin = null,
-    yMax = null,
-    threshold = null
+    synchronyWindowSize = 0
 }: 
 {
     data: any[],
@@ -30,17 +25,12 @@ export default function LinePlot({
     features: string[],
     marginLeft: number,
     marginBottom: number,
-    ylabel: string,
     legends: string[],
     colors: string[],
     xAxis: boolean,
-    yAxis: boolean,
     cursorX: number | null,
     setCursorX: React.Dispatch<React.SetStateAction<number | null>>,
-    synchronyWindowSize?: number,
-    yMin?: number | null,
-    yMax?: number | null,
-    threshold?: number | null
+    synchronyWindowSize?: number
 }
 ) {
     const [width, setWidth] = useState(0);
@@ -66,42 +56,25 @@ export default function LinePlot({
     }, []);
 
     if (width === 0 || height === 0) {
-        return <div ref={containerRef} className={`${xAxis ? 'full-dash-axis' :'full-dash'} rounded-2`} />;
+        return <div ref={containerRef} className="full-dash rounded-2" />;
     }
 
     const x = d3.scaleTime()
         .domain(d3.extent(data, d => new Date(d[timestampCol])) as [Date, Date])
         .range([marginLeft, width]);
-    const yRange = [(yMin !== null) ? yMin : d3.min(data, d => Math.min(...features.map(feat => d[feat]))) as number,
-                    (yMax !== null) ? yMax : d3.max(data, d => Math.max(...features.map(feat => d[feat]))) as number];
-
-    const y = d3.scaleLinear()
-            .domain(yRange)
-            .range([height - margin.bottom, margin.top]);
-
-    const lines = features.map((feat) => {
-        return d3.line()
-            .x((d: any) => x(new Date(d[timestampCol])))
-            .y((d: any) => y(d[feat]));
-    })
-
-    const thresholdLine = threshold !== null ?
-        d3.line()
-            .x((d: any) => x(new Date(d[timestampCol])))
-            .y(() => y(threshold)) : null;
-
+    
     const mouseMoveFunc = (event: React.MouseEvent<SVGElement>) => {
-        OnMouseMove(
-            { event, xScale: x, setCursorX }
-        );
-    };
+            OnMouseMove(
+                { event, xScale: x, setCursorX }
+            );
+        };
 
     const cursorXTime = cursorX !== null ? x.invert(cursorX) : null;
     const windowEndTime = cursorXTime !== null ? new Date(cursorXTime.getTime() + synchronyWindowSize * 1000) : null;
     const windowWidth = windowEndTime !== null && cursorX !== null ? x(windowEndTime) - cursorX : 0;
-
+    
     return (
-        <div ref={containerRef} className={`${xAxis ? 'full-dash-axis' :'full-dash'} rounded-2 position-relative`}>
+        <div ref={containerRef} className="full-dash rounded-2 position-relative">
             <div>
                 <LegendBox
                     labels={legends}
@@ -109,27 +82,30 @@ export default function LinePlot({
                     type="line"
                 />
             </div>
-            <svg width="100%" height="100%" onMouseMove={mouseMoveFunc} id='svg-plot'>
+            <svg width="100%" height="100%" onMouseMove={mouseMoveFunc}>
                 <g className="plot-area">
-                    {lines.map((line, index) => {
-                        return <path d={line(dataCopy) as string} fill="none" stroke={colors[index]} strokeWidth="2" />
+                    {features.map((feat, i) => {
+                        return (
+                            dataCopy.map((d) => {
+                                return (
+                                    d[feat] === 1 ? <rect
+                                        x={x(new Date(d[timestampCol]))}
+                                        y={margin.top}
+                                        width={width / dataCopy.length}
+                                        height={height - marginBottom - margin.top}
+                                        fill={colors[i]}
+                                        className="category-rect"
+                                    /> : null
+                                );
+                            }
+                            )
+                        );
                     })}
-                    {thresholdLine ? <path d={thresholdLine(dataCopy) as string} fill="none" stroke="#c4c4c4" strokeWidth="2" strokeDasharray="5,5" /> : null}
                     {cursorX !== null ? <line x1={cursorX} y1={0} x2={cursorX} y2={height} stroke="#e04667" strokeWidth="1.5" strokeDasharray="4,4" /> : null}
                     {cursorX !== null && synchronyWindowSize > 0 ? 
                         <rect x={cursorX} y={0} width={windowWidth} height={height} fill='#e04667' fillOpacity={0.1}  />
                     : null}
                 </g>
-                { yAxis ? <Axis
-                    orientation = "left"
-                    scale = {y}
-                    time = {false}
-                    marginLeft={marginLeft}
-                    marginBottom={0}
-                    width={width}
-                    height={height}
-                    label={ylabel}
-                /> : null }
                 { xAxis ? <Axis
                     orientation = "bottom"
                     scale = {x}

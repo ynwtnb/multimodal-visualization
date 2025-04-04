@@ -6,41 +6,41 @@ import LegendBox from "./legendBox";
 import Axis from "./axis";
 import OnMouseMove from "./onMouseMove";
 
-export default function LinePlot({
+export default function HeatMap({
     data,
     timestampCol,
-    features,
+    feature,
     marginLeft,
     marginBottom,
-    ylabel,
-    legends,
-    colors,
+    legend,
     xAxis,
-    yAxis,
     cursorX,
     setCursorX,
-    synchronyWindowSize = 0,
     yMin = null,
     yMax = null,
-    threshold = null
+    threshold = null,
+    lineOverlay = false,
+    yAxis = false,
+    ylabel = "",
+    lineThreshold = null
 }: 
 {
     data: any[],
     timestampCol: string,
-    features: string[],
+    feature: string,
     marginLeft: number,
     marginBottom: number,
-    ylabel: string,
-    legends: string[],
-    colors: string[],
+    legend: string,
     xAxis: boolean,
-    yAxis: boolean,
     cursorX: number | null,
-    setCursorX: React.Dispatch<React.SetStateAction<number | null>>,
-    synchronyWindowSize?: number,
+        setCursorX: React.Dispatch<React.SetStateAction<number | null>>,
     yMin?: number | null,
     yMax?: number | null,
     threshold?: number | null
+    lineOverlay?: boolean,
+    yAxis?: boolean,
+    ylabel?: string,
+    lineThreshold?: number | null
 }
 ) {
     const [width, setWidth] = useState(0);
@@ -48,7 +48,7 @@ export default function LinePlot({
     const containerRef = useRef<HTMLDivElement>(null);
     const margin = { top: height * 0.15, bottom: marginBottom, left: marginLeft, right: 0 };
     const dataCopy = data.filter(
-        (d) => features.every((feat) => d[feat] !== null)
+        (d) => d[feature] !== null
     )
 
     // Update the dimensions of the plot when the window is resized
@@ -66,59 +66,72 @@ export default function LinePlot({
     }, []);
 
     if (width === 0 || height === 0) {
-        return <div ref={containerRef} className={`${xAxis ? 'full-dash-axis' :'full-dash'} rounded-2`} />;
+        return <div ref={containerRef} className={`${xAxis ? "full-dash-axis" : "full-dash"} rounded-2`} />;
     }
 
     const x = d3.scaleTime()
         .domain(d3.extent(data, d => new Date(d[timestampCol])) as [Date, Date])
         .range([marginLeft, width]);
-    const yRange = [(yMin !== null) ? yMin : d3.min(data, d => Math.min(...features.map(feat => d[feat]))) as number,
-                    (yMax !== null) ? yMax : d3.max(data, d => Math.max(...features.map(feat => d[feat]))) as number];
+    
+    const extent = d3.extent(data, d => d[feature]);
+    const domain_range = (yMin !== null && yMax !== null) ? [yMin, 0, yMax] :
+        [extent[0], 0, extent[1]] as [number, number, number];
+    
+    const color = d3.scaleDiverging<string>()
+        .domain(domain_range)
+        .interpolator(d3.interpolatePuOr);
+    
+    const yRange = [(yMin !== null) ? yMin : extent[0] as number,
+                    (yMax !== null) ? yMax : extent[1] as number];
 
     const y = d3.scaleLinear()
             .domain(yRange)
             .range([height - margin.bottom, margin.top]);
 
-    const lines = features.map((feat) => {
-        return d3.line()
+    const line = lineOverlay ? d3.line()
             .x((d: any) => x(new Date(d[timestampCol])))
-            .y((d: any) => y(d[feat]));
-    })
+            .y((d: any) => y(d[feature])) : null;
 
-    const thresholdLine = threshold !== null ?
-        d3.line()
-            .x((d: any) => x(new Date(d[timestampCol])))
-            .y(() => y(threshold)) : null;
+    const thresholdLine = lineThreshold !== null ?
+            d3.line()
+                .x((d: any) => x(new Date(d[timestampCol])))
+                .y(() => y(lineThreshold)) : null;
 
     const mouseMoveFunc = (event: React.MouseEvent<SVGElement>) => {
-        OnMouseMove(
-            { event, xScale: x, setCursorX }
-        );
-    };
-
-    const cursorXTime = cursorX !== null ? x.invert(cursorX) : null;
-    const windowEndTime = cursorXTime !== null ? new Date(cursorXTime.getTime() + synchronyWindowSize * 1000) : null;
-    const windowWidth = windowEndTime !== null && cursorX !== null ? x(windowEndTime) - cursorX : 0;
+            OnMouseMove(
+                { event, xScale: x, setCursorX }
+            );
+        };
 
     return (
-        <div ref={containerRef} className={`${xAxis ? 'full-dash-axis' :'full-dash'} rounded-2 position-relative`}>
+        <div ref={containerRef} className={`${xAxis ? "full-dash-axis" : "full-dash"} rounded-2 position-relative`}>
             <div>
                 <LegendBox
-                    labels={legends}
-                    colors={colors}
+                    labels={[`${legend} (pos)`, `${legend} (neg)`]}
+                    colors={[color(domain_range[2]), color(domain_range[0])]}
                     type="line"
                 />
             </div>
             <svg width="100%" height="100%" onMouseMove={mouseMoveFunc} id='svg-plot'>
                 <g className="plot-area">
-                    {lines.map((line, index) => {
-                        return <path d={line(dataCopy) as string} fill="none" stroke={colors[index]} strokeWidth="2" />
-                    })}
+                    {
+                        dataCopy.map((d) => {
+                            return (
+                                (threshold !== null && Math.abs(d[feature]) > threshold) || (threshold === null) ? <rect
+                                    x={x(new Date(d[timestampCol]))}
+                                    y={margin.top}
+                                    width={width / dataCopy.length}
+                                    height={height - marginBottom - margin.top}
+                                    fill={color(d[feature])}
+                                    className="category-rect"
+                                /> : null
+                            );
+                        }
+                        )
+                    }
+                    {line !== null ? <path d={line(dataCopy) as string} fill="none" stroke="#8e8e8e" strokeWidth="2"/> : null}
                     {thresholdLine ? <path d={thresholdLine(dataCopy) as string} fill="none" stroke="#c4c4c4" strokeWidth="2" strokeDasharray="5,5" /> : null}
                     {cursorX !== null ? <line x1={cursorX} y1={0} x2={cursorX} y2={height} stroke="#e04667" strokeWidth="1.5" strokeDasharray="4,4" /> : null}
-                    {cursorX !== null && synchronyWindowSize > 0 ? 
-                        <rect x={cursorX} y={0} width={windowWidth} height={height} fill='#e04667' fillOpacity={0.1}  />
-                    : null}
                 </g>
                 { yAxis ? <Axis
                     orientation = "left"
