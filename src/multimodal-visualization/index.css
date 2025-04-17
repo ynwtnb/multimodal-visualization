@@ -13,17 +13,24 @@
 }
 
 .full-dash {
-    width: 85vw;
+    width: 60vw;
     height: 15vh;
     margin-top: 1vh;
+    margin-left: 5vw;
     background-color: #FFFFFF;
 }
 
 .full-dash-axis {
-    width: 85vw;
+    width: 60vw;
     height: 20vh;
     margin-top: 1vh;
+    margin-left: 5vw;
     background-color: #FFFFFF;
+}
+
+#video-control {
+    width: 30vw;
+    margin-right: 2.5vw;
 }
 
 .dash-title {
@@ -44,10 +51,7 @@
     height: 1em;
 }
 
-.seg-slider-container {
-    padding-right: 8vw;
-}
-
 .category-rect {
     fill-opacity: 50%;
 }
+

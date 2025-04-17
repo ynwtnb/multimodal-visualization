@@ -16,6 +16,11 @@ export default function HeatMap({
     xAxis,
     cursorX,
     setCursorX,
+    setCursorXTime,
+    p1LeadCol = null,
+    p2LeadCol = null,
+    p1Color = null,
+    p2Color = null,
     yMin = null,
     yMax = null,
     threshold = null,
@@ -33,7 +38,12 @@ export default function HeatMap({
     legend: string,
     xAxis: boolean,
     cursorX: number | null,
-        setCursorX: React.Dispatch<React.SetStateAction<number | null>>,
+    setCursorX: React.Dispatch<React.SetStateAction<number | null>>,
+    setCursorXTime: React.Dispatch<React.SetStateAction<Date | null>>,
+    p1LeadCol?: string | null,
+    p2LeadCol?: string | null,
+    p1Color?: string | null,
+    p2Color?: string | null,
     yMin?: number | null,
     yMax?: number | null,
     threshold?: number | null
@@ -91,6 +101,10 @@ export default function HeatMap({
     const line = lineOverlay ? d3.line()
             .x((d: any) => x(new Date(d[timestampCol])))
             .y((d: any) => y(d[feature])) : null;
+    
+    const leadLine = (p1LeadCol !== null && p2LeadCol !== null) ? d3.line()
+            .x((d: any) => x(new Date(d[timestampCol])))
+            .y((d: any) => y(yRange[1])) : null;
 
     const thresholdLine = lineThreshold !== null ?
             d3.line()
@@ -99,7 +113,7 @@ export default function HeatMap({
 
     const mouseMoveFunc = (event: React.MouseEvent<SVGElement>) => {
             OnMouseMove(
-                { event, xScale: x, setCursorX }
+                { event, xScale: x, setCursorX, setCursorXTime }
             );
         };
 
@@ -130,6 +144,16 @@ export default function HeatMap({
                         )
                     }
                     {line !== null ? <path d={line(dataCopy) as string} fill="none" stroke="#8e8e8e" strokeWidth="2"/> : null}
+                    {
+                        p1LeadCol !== null && p2LeadCol !== null && leadLine !== null && p1Color !== null && p2Color !== null &&
+                            dataCopy.map((d, i) => (
+                                d[p1LeadCol] == 1 ? 
+                                <path key={i} d={leadLine(dataCopy.slice(i, i+2)) as string} fill="none" stroke={p1Color} strokeWidth="5" /> :
+                                d[p2LeadCol] == 1 ?
+                                <path key={i} d={leadLine(dataCopy.slice(i, i+2)) as string} fill="none" stroke={p2Color} strokeWidth="5" /> :
+                                null
+                            ))
+                    }
                     {thresholdLine ? <path d={thresholdLine(dataCopy) as string} fill="none" stroke="#c4c4c4" strokeWidth="2" strokeDasharray="5,5" /> : null}
                     {cursorX !== null ? <line x1={cursorX} y1={0} x2={cursorX} y2={height} stroke="#e04667" strokeWidth="1.5" strokeDasharray="4,4" /> : null}
                 </g>

@@ -19,6 +19,7 @@ export default function LinePlot({
     yAxis,
     cursorX,
     setCursorX,
+    setCursorXTime,
     synchronyWindowSize = 0,
     yMin = null,
     yMax = null,
@@ -37,6 +38,7 @@ export default function LinePlot({
     yAxis: boolean,
     cursorX: number | null,
     setCursorX: React.Dispatch<React.SetStateAction<number | null>>,
+    setCursorXTime: React.Dispatch<React.SetStateAction<Date | null>>,
     synchronyWindowSize?: number,
     yMin?: number | null,
     yMax?: number | null,
@@ -92,7 +94,7 @@ export default function LinePlot({
 
     const mouseMoveFunc = (event: React.MouseEvent<SVGElement>) => {
         OnMouseMove(
-            { event, xScale: x, setCursorX }
+            { event, xScale: x, setCursorX, setCursorXTime }
         );
     };
 

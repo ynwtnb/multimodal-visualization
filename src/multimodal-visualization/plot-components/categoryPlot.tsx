@@ -17,6 +17,7 @@ export default function CategoryPlot({
     xAxis,
     cursorX,
     setCursorX,
+    setCursorXTime,
     synchronyWindowSize = 0
 }: 
 {
@@ -30,6 +31,7 @@ export default function CategoryPlot({
     xAxis: boolean,
     cursorX: number | null,
     setCursorX: React.Dispatch<React.SetStateAction<number | null>>,
+    setCursorXTime: React.Dispatch<React.SetStateAction<Date | null>>,
     synchronyWindowSize?: number
 }
 ) {
@@ -65,14 +67,14 @@ export default function CategoryPlot({
     
     const mouseMoveFunc = (event: React.MouseEvent<SVGElement>) => {
             OnMouseMove(
-                { event, xScale: x, setCursorX }
+                { event, xScale: x, setCursorX, setCursorXTime }
             );
         };
 
     const cursorXTime = cursorX !== null ? x.invert(cursorX) : null;
     const windowEndTime = cursorXTime !== null ? new Date(cursorXTime.getTime() + synchronyWindowSize * 1000) : null;
     const windowWidth = windowEndTime !== null && cursorX !== null ? x(windowEndTime) - cursorX : 0;
-    
+
     return (
         <div ref={containerRef} className="full-dash rounded-2 position-relative">
             <div>
