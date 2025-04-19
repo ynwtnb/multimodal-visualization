@@ -22,7 +22,10 @@ export default function Axis(
         label: string
     }
 ) {
-    const ticks = scale.bandwidth ? scale.domain() : scale.ticks();
+    const ticks =
+        typeof (scale as any).bandwidth === 'function'
+            ? (scale as any).domain()
+            : (scale as any).ticks();
     var shortTicks;
     if (ticks.length > 8 && orientation === 'left') {
         const newTicks = [];
@@ -33,7 +36,10 @@ export default function Axis(
     } else {
         shortTicks = ticks;
     }   
-    const offset = scale.bandwidth ? scale.bandwidth() / 2 : 0;
+    const offset =
+        typeof (scale as any).bandwidth === 'function'
+            ? scale.bandwidth() / 2
+            : 0;
 
     return orientation === 'left' ? (
         <g transform={`translate(${marginLeft})`}>

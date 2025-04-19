@@ -18,6 +18,8 @@ export default function CategoryPlot({
     cursorX,
     setCursorX,
     setCursorXTime,
+    setPlotWidth,
+    onClick,
     synchronyWindowSize = 0
 }: 
 {
@@ -32,6 +34,8 @@ export default function CategoryPlot({
     cursorX: number | null,
     setCursorX: React.Dispatch<React.SetStateAction<number | null>>,
     setCursorXTime: React.Dispatch<React.SetStateAction<Date | null>>,
+    setPlotWidth: React.Dispatch<React.SetStateAction<number>>,
+    onClick: (event: React.MouseEvent<HTMLDivElement>) => void,
     synchronyWindowSize?: number
 }
 ) {
@@ -43,11 +47,16 @@ export default function CategoryPlot({
         (d) => features.every((feat) => d[feat] !== null)
     )
 
+    const scaleX = d3.scaleTime()
+        .domain(d3.extent(data, d => new Date(d[timestampCol])) as [Date, Date])
+        .range([marginLeft, width]);
+
     // Update the dimensions of the plot when the window is resized
     const updateDimensions = () => {
         if (containerRef.current) {
             setWidth(containerRef.current.clientWidth);
             setHeight(containerRef.current.clientHeight);
+            setPlotWidth(containerRef.current.clientWidth);
         }
     };
 
@@ -60,23 +69,19 @@ export default function CategoryPlot({
     if (width === 0 || height === 0) {
         return <div ref={containerRef} className="full-dash rounded-2" />;
     }
-
-    const x = d3.scaleTime()
-        .domain(d3.extent(data, d => new Date(d[timestampCol])) as [Date, Date])
-        .range([marginLeft, width]);
     
     const mouseMoveFunc = (event: React.MouseEvent<SVGElement>) => {
             OnMouseMove(
-                { event, xScale: x, setCursorX, setCursorXTime }
+                { event, xScale: scaleX, setCursorX, setCursorXTime }
             );
         };
 
-    const cursorXTime = cursorX !== null ? x.invert(cursorX) : null;
+    const cursorXTime = cursorX !== null ? scaleX.invert(cursorX) : null;
     const windowEndTime = cursorXTime !== null ? new Date(cursorXTime.getTime() + synchronyWindowSize * 1000) : null;
-    const windowWidth = windowEndTime !== null && cursorX !== null ? x(windowEndTime) - cursorX : 0;
+    const windowWidth = windowEndTime !== null && cursorX !== null ? scaleX(windowEndTime) - cursorX : 0;
 
     return (
-        <div ref={containerRef} className="full-dash rounded-2 position-relative">
+        <div ref={containerRef} className="plot-area full-dash rounded-2 position-relative" onClick={onClick}>
             <div>
                 <LegendBox
                     labels={legends}
@@ -91,7 +96,7 @@ export default function CategoryPlot({
                             dataCopy.map((d) => {
                                 return (
                                     d[feat] === 1 ? <rect
-                                        x={x(new Date(d[timestampCol]))}
+                                        x={scaleX(new Date(d[timestampCol]))}
                                         y={margin.top}
                                         width={width / dataCopy.length}
                                         height={height - marginBottom - margin.top}
@@ -110,7 +115,7 @@ export default function CategoryPlot({
                 </g>
                 { xAxis ? <Axis
                     orientation = "bottom"
-                    scale = {x}
+                    scale = {scaleX}
                     time = {true}
                     marginLeft={0}
                     marginBottom={marginBottom}

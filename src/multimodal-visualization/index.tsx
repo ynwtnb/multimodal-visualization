@@ -3,13 +3,14 @@ import logo from '../logo.svg';
 import './index.css';
 import "bootstrap/dist/css/bootstrap.min.css";
 import * as d3 from "d3";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { setData } from "./dataReducer";
 import { useDispatch, useSelector } from "react-redux";
 import LinePlot from "./plot-components/linePlot";
 import moment from "moment";
 import CategoryPlot from "./plot-components/categoryPlot";
 import HeatMap from "./plot-components/heatMap";
+import { start } from "repl";
 
 export default function MultimodalVisualization() {
     const segSize =120;
@@ -20,18 +21,18 @@ export default function MultimodalVisualization() {
     const [startTime, setStartTime] = useState<Date | null>(null);
     const [endTime, setEndTime] = useState<Date | null>(null);
     const [segNum, setSegNum] = useState<number>(0);
-    const [seg, setSeg] = useState<number>(-1);
-    const [segStartTime, setSegStartTime] = useState(new Date());
-    const [segEndTime, setSegEndTime] = useState(new Date());
+    const [seg, setSeg] = useState<number>(0);
     const [segData, setSegData] = useState<any[]>([]);
     const [cursorX, setCursorX] = useState<number|null>(null);
     const [cursorXTime, setCursorXTime] = useState<Date|null>(null);
-    const [videoTime, setVideoTime] = useState<number>(0);
+    const [plotWidth, setPlotWidth] = useState<number>(0);
+    const isSyncingRef = useRef(false);
     const dispatch = useDispatch();
     const { data } = useSelector((state: any) => state.dataReducer);
     const videoPath = './data/T21_2318_Dyadic_Play.mp4';
     const timestampCol = "Timestamp";
     const marginLeft = 60;
+    // Load data
     useEffect(() => {
         const loadData = async () => {
             const path = './data/T21_Dyadic_Play_IBI_Behavior_Synced_ccf.csv';
@@ -57,33 +58,67 @@ export default function MultimodalVisualization() {
         };
         loadData();
     }, []);
+    
+    // Update segData when seg changes
     useEffect(() => {
         if (startTime !== null) {
             console.log(seg);
             const start = moment(startTime).add(seg * stepSize, 's').toDate();
             const end = moment(startTime).add(seg * stepSize + segSize, 's').toDate();
-            setSegStartTime(start);
-            setSegEndTime(end);
-            setSegData(data.filter((d: any) => {
+            const filteredData = data.filter((d: any) => {
                 const timestamp = new Date(d['Timestamp']);
                 return timestamp >= start && timestamp < end;
-            }));
+            })
+            setSegData(filteredData);
             console.log(`Seg start time: ${start}`);
             console.log(`Seg end time: ${end}`);
-            console.log(data.filter((d: any) => {
-                const timestamp = new Date(d['Timestamp']);
-                return timestamp >= start && timestamp < end;
-            }));
+            console.log(filteredData);
         }
-    }, [seg])
+    }, [seg, startTime, data]);
 
+    // Update the video time when cursorXTime changes
     useEffect(() => {
-        if (cursorXTime !== null && startTime !== null) {
-            const offsetInSeconds = moment(cursorXTime).diff(moment(startTime), 'seconds');
-            (document.getElementById("video-control") as HTMLVideoElement)!.currentTime = offsetInSeconds;
+        if (!cursorXTime || !startTime) return;
+        if (isSyncingRef.current) {
+            isSyncingRef.current = false;
+            return;
         }
+        const offsetInSeconds = moment(cursorXTime).diff(moment(startTime), 'seconds');
+        (document.getElementById("video-control") as HTMLVideoElement)!.currentTime = offsetInSeconds;
     }, [cursorXTime])
     
+    // update the cursor location when video time changes
+    useEffect(() => {
+        const videoEl = document.getElementById("video-control") as HTMLVideoElement;
+        if (!videoEl || !startTime || plotWidth <= marginLeft) return;
+
+        // handler runs on every timeupdate while playing
+        const handleTimeUpdate = () => {
+            isSyncingRef.current = true;
+            // compute absolute time = startTime + video.currentTime
+            const newCursorTime = moment(startTime)
+                .add(videoEl.currentTime, 'seconds')
+                .toDate();
+            setCursorXTime(newCursorTime);
+            
+            const relSec = videoEl.currentTime - seg * stepSize;            // seconds into this segment
+            const clamped = Math.max(0, Math.min(segSize, relSec));         // clamp between 0 and segSize
+            const pct     = clamped / segSize;                              // 0 → 1 across the segment
+            const x       = marginLeft + pct * (plotWidth - marginLeft);    // map into pixel range
+            setCursorX(x);
+        };
+        videoEl.addEventListener("timeupdate", handleTimeUpdate);
+            return () => {
+                videoEl.removeEventListener("timeupdate", handleTimeUpdate);
+            };
+        }, [startTime, plotWidth, seg]);
+        
+    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        console.log("mouse click");
+        const v = document.getElementById("video-control") as HTMLVideoElement;
+        if (v) (v.paused ? v.play() : v.pause());
+    };
+
     return (
         <div className="main-contents">
             <div className="p-2 ps-3 fs-5 mb-3 w-100 dash-title"><b>Multimodal dyadic data visualization</b></div>
@@ -106,9 +141,11 @@ export default function MultimodalVisualization() {
                         cursorX={cursorX}
                         setCursorX={setCursorX}
                         setCursorXTime={setCursorXTime}
+                        setPlotWidth={setPlotWidth}
                         synchronyWindowSize={synchronyWindowSize}
                         yMin = {0}
                         yMax = {1}
+                        onClick={handleClick}
                     />
                     <LinePlot
                         data={segData}
@@ -124,9 +161,11 @@ export default function MultimodalVisualization() {
                         cursorX={cursorX}
                         setCursorX={setCursorX}
                         setCursorXTime={setCursorXTime}
+                        setPlotWidth={setPlotWidth}
                         synchronyWindowSize={synchronyWindowSize}
                         yMin = {0}
                         yMax = {1}
+                        onClick={handleClick}
                     />
                     <CategoryPlot
                         data={segData}
@@ -141,6 +180,8 @@ export default function MultimodalVisualization() {
                         setCursorXTime={setCursorXTime}
                         synchronyWindowSize={synchronyWindowSize}
                         setCursorX={setCursorX}
+                        setPlotWidth={setPlotWidth}
+                        onClick={handleClick}
                     />
                     <CategoryPlot
                         data={segData}
@@ -155,6 +196,8 @@ export default function MultimodalVisualization() {
                         setCursorXTime={setCursorXTime}
                         synchronyWindowSize={synchronyWindowSize}
                         setCursorX={setCursorX}
+                        setPlotWidth={setPlotWidth}
+                        onClick={handleClick}
                     />
                     {/* <LinePlot
                         data={segData}
@@ -212,6 +255,7 @@ export default function MultimodalVisualization() {
                         cursorX={cursorX}
                         setCursorX={setCursorX}
                         setCursorXTime={setCursorXTime}
+                        setPlotWidth={setPlotWidth}
                         yMin={-1}
                         yMax={1}
                         lineOverlay = {true}
@@ -223,6 +267,7 @@ export default function MultimodalVisualization() {
                         p2LeadCol={"Parent_lead_30"}
                         p1Color={p1Color}
                         p2Color={p2Color}
+                        onClick={handleClick}
                     />
                     {/* <LinePlot
                         data={segData}

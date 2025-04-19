@@ -20,6 +20,8 @@ export default function LinePlot({
     cursorX,
     setCursorX,
     setCursorXTime,
+    setPlotWidth,
+    onClick,
     synchronyWindowSize = 0,
     yMin = null,
     yMax = null,
@@ -39,6 +41,8 @@ export default function LinePlot({
     cursorX: number | null,
     setCursorX: React.Dispatch<React.SetStateAction<number | null>>,
     setCursorXTime: React.Dispatch<React.SetStateAction<Date | null>>,
+    setPlotWidth: React.Dispatch<React.SetStateAction<number>>,
+    onClick: (event: React.MouseEvent<HTMLDivElement>) => void,
     synchronyWindowSize?: number,
     yMin?: number | null,
     yMax?: number | null,
@@ -58,6 +62,7 @@ export default function LinePlot({
         if (containerRef.current) {
             setWidth(containerRef.current.clientWidth);
             setHeight(containerRef.current.clientHeight);
+            setPlotWidth(containerRef.current.clientWidth);
         }
     };
 
@@ -71,41 +76,41 @@ export default function LinePlot({
         return <div ref={containerRef} className={`${xAxis ? 'full-dash-axis' :'full-dash'} rounded-2`} />;
     }
 
-    const x = d3.scaleTime()
-        .domain(d3.extent(data, d => new Date(d[timestampCol])) as [Date, Date])
-        .range([marginLeft, width]);
     const yRange = [(yMin !== null) ? yMin : d3.min(data, d => Math.min(...features.map(feat => d[feat]))) as number,
                     (yMax !== null) ? yMax : d3.max(data, d => Math.max(...features.map(feat => d[feat]))) as number];
 
+    const scaleX = d3.scaleTime()
+        .domain(d3.extent(data, d => new Date(d[timestampCol])) as [Date, Date])
+        .range([marginLeft, width]);
     const y = d3.scaleLinear()
             .domain(yRange)
             .range([height - margin.bottom, margin.top]);
 
     const lines = features.map((feat) => {
         return d3.line()
-            .x((d: any) => x(new Date(d[timestampCol])))
+            .x((d: any) => scaleX(new Date(d[timestampCol])))
             .y((d: any) => y(d[feat]));
     })
 
     const thresholdLine = threshold !== null ?
         d3.line()
-            .x((d: any) => x(new Date(d[timestampCol])))
+            .x((d: any) => scaleX(new Date(d[timestampCol])))
             .y(() => y(threshold)) : null;
 
     const mouseMoveFunc = (event: React.MouseEvent<SVGElement>) => {
         OnMouseMove(
-            { event, xScale: x, setCursorX, setCursorXTime }
+            { event, xScale: scaleX, setCursorX, setCursorXTime }
         );
     };
 
-    const cursorXTime = cursorX !== null ? x.invert(cursorX) : null;
+    const cursorXTime = cursorX !== null ? scaleX.invert(cursorX) : null;
     const windowEndTime = cursorXTime !== null ? new Date(cursorXTime.getTime() + synchronyWindowSize * 1000) : null;
-    const windowWidth = windowEndTime !== null && cursorX !== null ? x(windowEndTime) - cursorX : 0;
+    const windowWidth = windowEndTime !== null && cursorX !== null ? scaleX(windowEndTime) - cursorX : 0;
 
     return (
-        <div ref={containerRef} className={`${xAxis ? 'full-dash-axis' :'full-dash'} rounded-2 position-relative`}>
+        <div ref={containerRef} className={`${xAxis ? 'full-dash-axis' :'full-dash'} plot-area rounded-2 position-relative`} onClick={onClick}>
             <div>
-                <LegendBox
+                <LegendBox 
                     labels={legends}
                     colors={colors}
                     type="line"
@@ -134,7 +139,7 @@ export default function LinePlot({
                 /> : null }
                 { xAxis ? <Axis
                     orientation = "bottom"
-                    scale = {x}
+                    scale = {scaleX}
                     time = {true}
                     marginLeft={0}
                     marginBottom={marginBottom}

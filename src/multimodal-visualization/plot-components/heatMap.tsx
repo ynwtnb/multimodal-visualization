@@ -17,6 +17,8 @@ export default function HeatMap({
     cursorX,
     setCursorX,
     setCursorXTime,
+    setPlotWidth,
+    onClick,
     p1LeadCol = null,
     p2LeadCol = null,
     p1Color = null,
@@ -40,6 +42,8 @@ export default function HeatMap({
     cursorX: number | null,
     setCursorX: React.Dispatch<React.SetStateAction<number | null>>,
     setCursorXTime: React.Dispatch<React.SetStateAction<Date | null>>,
+    setPlotWidth: React.Dispatch<React.SetStateAction<number>>,
+    onClick: (event: React.MouseEvent<HTMLDivElement>) => void,
     p1LeadCol?: string | null,
     p2LeadCol?: string | null,
     p1Color?: string | null,
@@ -66,6 +70,7 @@ export default function HeatMap({
         if (containerRef.current) {
             setWidth(containerRef.current.clientWidth);
             setHeight(containerRef.current.clientHeight);
+            setPlotWidth(containerRef.current.clientWidth);
         }
     };
 
@@ -78,10 +83,6 @@ export default function HeatMap({
     if (width === 0 || height === 0) {
         return <div ref={containerRef} className={`${xAxis ? "full-dash-axis" : "full-dash"} rounded-2`} />;
     }
-
-    const x = d3.scaleTime()
-        .domain(d3.extent(data, d => new Date(d[timestampCol])) as [Date, Date])
-        .range([marginLeft, width]);
     
     const extent = d3.extent(data, d => d[feature]);
     const domain_range = (yMin !== null && yMax !== null) ? [yMin, 0, yMax] :
@@ -93,32 +94,34 @@ export default function HeatMap({
     
     const yRange = [(yMin !== null) ? yMin : extent[0] as number,
                     (yMax !== null) ? yMax : extent[1] as number];
-
+    const scaleX = d3.scaleTime()
+        .domain(d3.extent(data, d => new Date(d[timestampCol])) as [Date, Date])
+        .range([marginLeft, width]);
     const y = d3.scaleLinear()
             .domain(yRange)
             .range([height - margin.bottom, margin.top]);
 
     const line = lineOverlay ? d3.line()
-            .x((d: any) => x(new Date(d[timestampCol])))
+            .x((d: any) => scaleX(new Date(d[timestampCol])))
             .y((d: any) => y(d[feature])) : null;
     
     const leadLine = (p1LeadCol !== null && p2LeadCol !== null) ? d3.line()
-            .x((d: any) => x(new Date(d[timestampCol])))
+            .x((d: any) => scaleX(new Date(d[timestampCol])))
             .y((d: any) => y(yRange[1])) : null;
 
     const thresholdLine = lineThreshold !== null ?
             d3.line()
-                .x((d: any) => x(new Date(d[timestampCol])))
+                .x((d: any) => scaleX(new Date(d[timestampCol])))
                 .y(() => y(lineThreshold)) : null;
 
     const mouseMoveFunc = (event: React.MouseEvent<SVGElement>) => {
             OnMouseMove(
-                { event, xScale: x, setCursorX, setCursorXTime }
+                { event, xScale: scaleX, setCursorX, setCursorXTime }
             );
         };
 
     return (
-        <div ref={containerRef} className={`${xAxis ? "full-dash-axis" : "full-dash"} rounded-2 position-relative`}>
+        <div ref={containerRef} className={`${xAxis ? "full-dash-axis" : "full-dash"} plot-area rounded-2 position-relative`} onClick={onClick}>
             <div>
                 <LegendBox
                     labels={[`${legend} (pos)`, `${legend} (neg)`]}
@@ -132,7 +135,7 @@ export default function HeatMap({
                         dataCopy.map((d) => {
                             return (
                                 (threshold !== null && Math.abs(d[feature]) > threshold) || (threshold === null) ? <rect
-                                    x={x(new Date(d[timestampCol]))}
+                                    x={scaleX(new Date(d[timestampCol]))}
                                     y={margin.top}
                                     width={width / dataCopy.length}
                                     height={height - marginBottom - margin.top}
@@ -169,7 +172,7 @@ export default function HeatMap({
                 /> : null }
                 { xAxis ? <Axis
                     orientation = "bottom"
-                    scale = {x}
+                    scale = {scaleX}
                     time = {true}
                     marginLeft={0}
                     marginBottom={marginBottom}
