@@ -1,6 +1,8 @@
-# Getting Started with Create React App
+## Data access
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+The data contains sensitive information and cannot be shared publicly.
+If you need to access the data, please request the access [here](https://drive.google.com/drive/folders/1toQmgMCMY-pZKCoCJbXuI2yWPaov5Lvm?usp=sharing) and 
+locate the data in the `public/data/` folder.
 
 ## Available Scripts
 
