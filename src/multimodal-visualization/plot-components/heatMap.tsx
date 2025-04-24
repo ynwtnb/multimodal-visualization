@@ -90,7 +90,7 @@ export default function HeatMap({
     
     const color = d3.scaleDiverging<string>()
         .domain(domain_range)
-        .interpolator(d3.interpolatePuOr);
+        .interpolator(d3.interpolateRgb("blue", "red"));
     
     const yRange = [(yMin !== null) ? yMin : extent[0] as number,
                     (yMax !== null) ? yMax : extent[1] as number];

@@ -20,6 +20,14 @@
     background-color: #FFFFFF;
 }
 
+.feature-selector {
+    margin-left: 5vw;
+}
+
+.seg-size-control {
+    width: 5vw !important;
+}
+
 .full-dash-axis {
     width: 60vw;
     height: 20vh;
